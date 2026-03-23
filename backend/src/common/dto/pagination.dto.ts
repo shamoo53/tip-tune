@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class PaginationMeta {
   @ApiProperty({ example: 120 })
@@ -18,4 +18,8 @@ export class PaginationMeta {
 
   @ApiProperty({ example: true })
   hasPreviousPage: boolean;
+
+  // ADD THIS:
+  @ApiProperty({ example: 5, required: false })
+  unseenCount?: number;
 }

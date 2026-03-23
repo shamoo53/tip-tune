@@ -1,38 +1,36 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
-import { Request, Response } from 'express';
-import { THROTTLE_AUTH_AWARE } from '../decorators/throttle-override.decorator';
+import { Injectable, ExecutionContext } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import {
+  ThrottlerGuard,
+  ThrottlerException,
+  ThrottlerRequest,
+} from "@nestjs/throttler";
+import { Request, Response } from "express";
+import { THROTTLE_AUTH_AWARE } from "../decorators/throttle-override.decorator";
 
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
   /**
    * Custom throttler guard that adds rate limit headers and whitelist support
    */
-  
-  constructor(
-    options: any,
-    storageService: any,
-    private readonly reflector: Reflector,
-  ) {
+
+  constructor(options: any, storageService: any, reflector: Reflector) {
     super(options, storageService, reflector);
   }
 
   // Whitelist of IPs that bypass rate limiting (internal services, monitoring, etc.)
   private readonly whitelistedIPs = [
-    '127.0.0.1',
-    '::1',
-    'localhost',
+    "127.0.0.1",
+    "::1",
+    "localhost",
     // Add your internal service IPs here
-    ...(process.env.RATE_LIMIT_WHITELIST?.split(',').filter(Boolean) || []),
+    ...(process.env.RATE_LIMIT_WHITELIST?.split(",").filter(Boolean) || []),
   ];
 
   protected async handleRequest(
-    context: ExecutionContext,
-    limit: number,
-    ttl: number,
-    throttler: any,
+    requestProps: ThrottlerRequest,
   ): Promise<boolean> {
+    const { context, limit, ttl, throttler } = requestProps;
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
 
@@ -40,9 +38,9 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     const clientIp = this.getClientIp(request);
     if (this.isWhitelisted(clientIp)) {
       // Set headers indicating unlimited access
-      response.setHeader('X-RateLimit-Limit', 'unlimited');
-      response.setHeader('X-RateLimit-Remaining', 'unlimited');
-      response.setHeader('X-RateLimit-Reset', 'never');
+      response.setHeader("X-RateLimit-Limit", "unlimited");
+      response.setHeader("X-RateLimit-Remaining", "unlimited");
+      response.setHeader("X-RateLimit-Reset", "never");
       return true;
     }
 
@@ -54,26 +52,27 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
 
     if (isAuthAware && this.isAuthenticated(request)) {
       // Increase limit for authenticated users
-      limit = 300; // Authenticated rate limit
-      ttl = 60000; // 1 minute
+      const { context, throttler } = requestProps;
+      const limit = requestProps.limit;
+      const ttl = requestProps.ttl;
     }
 
     try {
       // Call parent implementation to check rate limit
-      const result = await super.handleRequest(context, limit, ttl, throttler);
-      
+      const result = await super.handleRequest(requestProps);
+
       // Add rate limit headers on successful requests
       this.addRateLimitHeaders(response, limit, ttl);
-      
+
       return result;
     } catch (error) {
       // Add rate limit headers on rate limit exceeded
       this.addRateLimitHeaders(response, limit, ttl, true);
-      
+
       // Add Retry-After header (in seconds)
       const retryAfter = Math.ceil(ttl / 1000);
-      response.setHeader('Retry-After', retryAfter.toString());
-      
+      response.setHeader("Retry-After", retryAfter.toString());
+
       // Throw custom error with more details
       throw new ThrottlerException(
         `Rate limit exceeded. Please try again in ${retryAfter} seconds.`,
@@ -85,7 +84,7 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
    * Check if request is authenticated
    */
   private isAuthenticated(request: any): boolean {
-    return !!(request.user || request.headers.authorization);
+    return !!(request.user || request.headers?.authorization);
   }
 
   /**
@@ -100,9 +99,12 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     const resetTime = Date.now() + ttl;
     const remaining = isExceeded ? 0 : limit - 1; // Simplified, actual remaining would need tracker state
 
-    response.setHeader('X-RateLimit-Limit', limit.toString());
-    response.setHeader('X-RateLimit-Remaining', remaining.toString());
-    response.setHeader('X-RateLimit-Reset', Math.ceil(resetTime / 1000).toString());
+    response.setHeader("X-RateLimit-Limit", limit.toString());
+    response.setHeader("X-RateLimit-Remaining", remaining.toString());
+    response.setHeader(
+      "X-RateLimit-Reset",
+      Math.ceil(resetTime / 1000).toString(),
+    );
   }
 
   /**
@@ -110,18 +112,18 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
    */
   private getClientIp(request: Request): string {
     // Check common proxy headers
-    const forwarded = request.headers['x-forwarded-for'];
+    const forwarded = request.headers["x-forwarded-for"];
     if (forwarded) {
       const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-      return ips.split(',')[0].trim();
+      return ips.split(",")[0].trim();
     }
 
-    const realIp = request.headers['x-real-ip'];
+    const realIp = request.headers["x-real-ip"];
     if (realIp) {
       return Array.isArray(realIp) ? realIp[0] : realIp;
     }
 
-    return request.ip || request.socket.remoteAddress || 'unknown';
+    return request.ip || request.socket.remoteAddress || "unknown";
   }
 
   /**

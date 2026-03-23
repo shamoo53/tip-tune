@@ -4,23 +4,24 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
+import * as crypto from "crypto";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { v4 as uuidv4 } from "uuid";
 import {
   VerificationRequest,
   VerificationStatus,
   VerificationDocument,
-} from './entities/verification-request.entity';
-import { Artist } from '../artists/entities/artist.entity';
-import { CreateVerificationRequestDto } from './dto/create-verification-request.dto';
-import { ReviewVerificationRequestDto } from './dto/review-verification-request.dto';
-import { NotificationsService } from '../notifications/notifications.service';
+} from "./entities/verification-request.entity";
+import { Artist } from "../artists/entities/artist.entity";
+import { CreateVerificationRequestDto } from "./dto/create-verification-request.dto";
+import { ReviewVerificationRequestDto } from "./dto/review-verification-request.dto";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationType } from "@/notifications/notification.entity";
 
 @Injectable()
 export class VerificationService {
@@ -28,10 +29,10 @@ export class VerificationService {
   private readonly uploadDir: string;
   private readonly encryptionKey: Buffer;
   private readonly allowedMimeTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/jpg',
-    'application/pdf',
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "application/pdf",
   ];
   private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
 
@@ -44,12 +45,12 @@ export class VerificationService {
     private readonly notificationsService: NotificationsService,
   ) {
     this.uploadDir =
-      this.configService.get<string>('VERIFICATION_UPLOAD_DIR') ||
-      './uploads/verification';
+      this.configService.get<string>("VERIFICATION_UPLOAD_DIR") ||
+      "./uploads/verification";
     const key =
-      this.configService.get<string>('DOCUMENT_ENCRYPTION_KEY') ||
-      'default-key-32-chars-long!!!!!!';
-    this.encryptionKey = crypto.scryptSync(key, 'salt', 32);
+      this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY") ||
+      "default-key-32-chars-long!!!!!!";
+    this.encryptionKey = crypto.scryptSync(key, "salt", 32);
     this.ensureUploadDirectory();
   }
 
@@ -58,18 +59,20 @@ export class VerificationService {
       await fs.access(this.uploadDir);
     } catch {
       await fs.mkdir(this.uploadDir, { recursive: true });
-      this.logger.log(`Created verification upload directory: ${this.uploadDir}`);
+      this.logger.log(
+        `Created verification upload directory: ${this.uploadDir}`,
+      );
     }
   }
 
   private encryptBuffer(buffer: Buffer): { encrypted: Buffer; iv: string } {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
+    const cipher = crypto.createCipheriv("aes-256-gcm", this.encryptionKey, iv);
     const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
     const authTag = cipher.getAuthTag();
     return {
       encrypted: Buffer.concat([authTag, encrypted]),
-      iv: iv.toString('hex'),
+      iv: iv.toString("hex"),
     };
   }
 
@@ -77,9 +80,9 @@ export class VerificationService {
     const authTag = encryptedBuffer.slice(0, 16);
     const encrypted = encryptedBuffer.slice(16);
     const decipher = crypto.createDecipheriv(
-      'aes-256-gcm',
+      "aes-256-gcm",
       this.encryptionKey,
-      Buffer.from(iv, 'hex'),
+      Buffer.from(iv, "hex"),
     );
     decipher.setAuthTag(authTag);
     return Buffer.concat([decipher.update(encrypted), decipher.final()]);
@@ -88,7 +91,7 @@ export class VerificationService {
   private validateDocument(file: Express.Multer.File): void {
     if (!this.allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
-        `Invalid file type. Allowed types: ${this.allowedMimeTypes.join(', ')}`,
+        `Invalid file type. Allowed types: ${this.allowedMimeTypes.join(", ")}`,
       );
     }
 
@@ -131,21 +134,19 @@ export class VerificationService {
       };
     } catch (error) {
       this.logger.error(`Failed to upload document: ${error.message}`);
-      throw new BadRequestException('Failed to upload document');
+      throw new BadRequestException("Failed to upload document");
     }
   }
 
-  async getDecryptedDocument(
-    document: VerificationDocument,
-  ): Promise<Buffer> {
+  async getDecryptedDocument(document: VerificationDocument): Promise<Buffer> {
     try {
       const ivPath = `${document.encryptedPath}.iv`;
-      const iv = await fs.readFile(ivPath, 'utf-8');
+      const iv = await fs.readFile(ivPath, "utf-8");
       const encrypted = await fs.readFile(document.encryptedPath);
       return this.decryptBuffer(encrypted, iv);
     } catch (error) {
       this.logger.error(`Failed to decrypt document: ${error.message}`);
-      throw new BadRequestException('Failed to retrieve document');
+      throw new BadRequestException("Failed to retrieve document");
     }
   }
 
@@ -161,7 +162,7 @@ export class VerificationService {
 
     if (existingRequest) {
       throw new ConflictException(
-        'You already have a pending verification request',
+        "You already have a pending verification request",
       );
     }
 
@@ -171,11 +172,11 @@ export class VerificationService {
     });
 
     if (!artist) {
-      throw new NotFoundException('Artist not found');
+      throw new NotFoundException("Artist not found");
     }
 
     if (artist.isVerified) {
-      throw new ConflictException('Artist is already verified');
+      throw new ConflictException("Artist is already verified");
     }
 
     // Upload and encrypt documents
@@ -204,11 +205,11 @@ export class VerificationService {
   async getVerificationRequest(id: string): Promise<VerificationRequest> {
     const request = await this.verificationRepository.findOne({
       where: { id },
-      relations: ['artist', 'reviewedBy'],
+      relations: ["artist", "reviewedBy"],
     });
 
     if (!request) {
-      throw new NotFoundException('Verification request not found');
+      throw new NotFoundException("Verification request not found");
     }
 
     return request;
@@ -216,13 +217,17 @@ export class VerificationService {
 
   async getArtistVerificationStatus(
     artistId: string,
-  ): Promise<{ isVerified: boolean; hasPendingRequest: boolean; requestId?: string }> {
+  ): Promise<{
+    isVerified: boolean;
+    hasPendingRequest: boolean;
+    requestId?: string;
+  }> {
     const artist = await this.artistRepository.findOne({
       where: { id: artistId },
     });
 
     if (!artist) {
-      throw new NotFoundException('Artist not found');
+      throw new NotFoundException("Artist not found");
     }
 
     if (artist.isVerified) {
@@ -246,8 +251,8 @@ export class VerificationService {
   ): Promise<{ data: VerificationRequest[]; total: number }> {
     const [data, total] = await this.verificationRepository.findAndCount({
       where: { status: VerificationStatus.PENDING },
-      relations: ['artist'],
-      order: { submittedAt: 'ASC' },
+      relations: ["artist"],
+      order: { submittedAt: "ASC" },
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -262,17 +267,15 @@ export class VerificationService {
   ): Promise<VerificationRequest> {
     const request = await this.verificationRepository.findOne({
       where: { id: requestId },
-      relations: ['artist'],
+      relations: ["artist"],
     });
 
     if (!request) {
-      throw new NotFoundException('Verification request not found');
+      throw new NotFoundException("Verification request not found");
     }
 
     if (request.status !== VerificationStatus.PENDING) {
-      throw new BadRequestException(
-        'This request has already been reviewed',
-      );
+      throw new BadRequestException("This request has already been reviewed");
     }
 
     // Update request
@@ -305,15 +308,15 @@ export class VerificationService {
   ): Promise<void> {
     const isApproved = request.status === VerificationStatus.APPROVED;
     const title = isApproved
-      ? 'Verification Approved!'
-      : 'Verification Request Update';
+      ? "Verification Approved!"
+      : "Verification Request Update";
     const message = isApproved
-      ? 'Congratulations! Your artist verification has been approved. You now have a verified badge on your profile.'
-      : 'Your verification request has been reviewed. Please check the review notes for details.';
+      ? "Congratulations! Your artist verification has been approved. You now have a verified badge on your profile."
+      : "Your verification request has been reviewed. Please check the review notes for details.";
 
     await this.notificationsService.create({
       userId: request.artistId,
-      type: 'VERIFICATION_UPDATE',
+      type: NotificationType.VERIFICATION_UPDATE,
       title,
       message,
       data: {
@@ -330,12 +333,12 @@ export class VerificationService {
     });
 
     if (!request) {
-      throw new NotFoundException('Verification request not found');
+      throw new NotFoundException("Verification request not found");
     }
 
     if (request.status !== VerificationStatus.PENDING) {
       throw new BadRequestException(
-        'Cannot delete a request that has already been reviewed',
+        "Cannot delete a request that has already been reviewed",
       );
     }
 

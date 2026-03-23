@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { LicenseRequest, LicenseRequestStatus } from './entities/license-request.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { LicenseRequest, LicenseRequestStatus } from "./license-request.entity";
 
 export interface MailPayload {
   to: string;
@@ -24,7 +24,7 @@ export class LicensingMailService {
     // In a real implementation you'd resolve the artist's email via UserService/TrackService.
     await this.sendMail({
       to: `artist+${request.trackId}@platform.local`,
-      subject: 'New License Request for Your Track',
+      subject: "New License Request for Your Track",
       body: `
         You have received a new license request.
         Track ID  : ${request.trackId}
@@ -38,14 +38,16 @@ export class LicensingMailService {
 
   async notifyRequesterOfResponse(request: LicenseRequest): Promise<void> {
     const statusLabel =
-      request.status === LicenseRequestStatus.APPROVED ? 'approved ✅' : 'rejected ❌';
+      request.status === LicenseRequestStatus.APPROVED
+        ? "approved ✅"
+        : "rejected ❌";
 
     await this.sendMail({
       to: `user+${request.requesterId}@platform.local`,
-      subject: `Your License Request Has Been ${request.status === LicenseRequestStatus.APPROVED ? 'Approved' : 'Rejected'}`,
+      subject: `Your License Request Has Been ${request.status === LicenseRequestStatus.APPROVED ? "Approved" : "Rejected"}`,
       body: `
         Your license request (ID: ${request.id}) has been ${statusLabel}.
-        ${request.responseMessage ? `\nMessage from artist: ${request.responseMessage}` : ''}
+        ${request.responseMessage ? `\nMessage from artist: ${request.responseMessage}` : ""}
         
         Track ID: ${request.trackId}
       `,

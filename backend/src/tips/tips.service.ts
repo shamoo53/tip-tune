@@ -109,7 +109,8 @@ export class TipsService {
 
     let txDetails;
     try {
-      txDetails = await this.stellarService.getTransactionDetails(stellarTxHash);
+      txDetails =
+        await this.stellarService.getTransactionDetails(stellarTxHash);
     } catch (e: any) {
       throw new BadRequestException(
         `Invalid Stellar transaction hash: ${e.message}`,
@@ -136,12 +137,13 @@ export class TipsService {
     }
 
     const amount = paymentOp.amount;
-    const assetCode = paymentOp.asset_type === "native" ? "XLM" : paymentOp.asset_code;
+    const assetCode =
+      paymentOp.asset_type === "native" ? "XLM" : paymentOp.asset_code;
     const assetIssuer = paymentOp.asset_issuer;
     const assetType = paymentOp.asset_type;
 
     let user = null;
-    let senderAddress = 'anonymous';
+    let senderAddress = "anonymous";
     try {
       user = await this.usersService.findOne(userId);
       senderAddress = user.walletAddress;
@@ -226,7 +228,7 @@ export class TipsService {
     // ESLint Fix: Separate the const array from the reassigned data variable
     const [originalData, total] = await queryBuilder.getManyAndCount();
 
-    const data = originalData.map(tip => {
+    const data = originalData.map((tip) => {
       if (tip.artist && tip.artist.isDeleted) {
         tip.artist = null;
       }
@@ -260,10 +262,10 @@ export class TipsService {
     // ESLint Fix: Separate the const array from the reassigned data variable
     const [originalData, total] = await queryBuilder.getManyAndCount();
 
-    const data = originalData.map(tip => {
-      if (tip.fromUser && tip.fromUser.isDeleted) {
+    const data = originalData.map((tip) => {
+      if (tip.fromUser && (tip.fromUser as any).isDeleted) {
         tip.fromUser = null;
-        tip.senderAddress = 'anonymous';
+        tip.senderAddress = "anonymous";
       }
       return tip;
     });
@@ -276,7 +278,10 @@ export class TipsService {
     tip.status = status;
     const savedTip = await this.tipRepository.save(tip);
 
-    if (tip.trackId && (status === TipStatus.FAILED || status === TipStatus.REVERSED)) {
+    if (
+      tip.trackId &&
+      (status === TipStatus.FAILED || status === TipStatus.REVERSED)
+    ) {
       this.tipReconciliationService.reconcileTrack(tip.trackId).catch((err) => {
         this.logger.error(`Failed to reconcile track ${tip.trackId}:`, err);
       });

@@ -3,7 +3,6 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { ThrottlerStorageRedisService } from "throttler-storage-redis";
 import Redis from "ioredis";
 import { APP_GUARD } from "@nestjs/core";
 import { CustomThrottlerGuard } from "./common/guards/throttler.guard";
@@ -35,6 +34,7 @@ import { MetricsModule } from "./metrics/metrics.module";
 import { HealthModule } from "./health/health.module";
 import { VersionModule } from "./version/version.module";
 import { ArtistStatusModule } from "./artist-status/artist-status.module";
+import { CustomThrottlerRedisStorage } from "./custom-throttler-storage-redis";
 
 @Module({
   imports: [
@@ -46,23 +46,25 @@ import { ArtistStatusModule } from "./artist-status/artist-status.module";
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        throttlers: [
-          {
-            name: 'default',
-            ttl: 60000, // 60 seconds
-            limit: configService.get<number>('RATE_LIMIT_PUBLIC', 60), // Default: 60 requests per minute
-          },
-        ],
-        storage: new ThrottlerStorageRedisService(
-          new Redis({
-            host: configService.get<string>('REDIS_HOST', 'localhost'),
-            port: configService.get<number>('REDIS_PORT', 6379),
-            password: configService.get<string>('REDIS_PASSWORD'),
-            db: configService.get<number>('REDIS_DB', 0),
-          }),
-        ),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisClient = new Redis({
+          host: configService.get<string>("REDIS_HOST", "localhost"),
+          port: configService.get<number>("REDIS_PORT", 6379),
+          password: configService.get<string>("REDIS_PASSWORD"),
+          db: configService.get<number>("REDIS_DB", 0),
+        });
+
+        return {
+          throttlers: [
+            {
+              name: "default",
+              ttl: 60000, // 60 seconds
+              limit: configService.get<number>("RATE_LIMIT_PUBLIC", 60),
+            },
+          ],
+          storage: new CustomThrottlerRedisStorage(redisClient),
+        };
+      },
     }),
     CommonModule,
     MetricsModule,

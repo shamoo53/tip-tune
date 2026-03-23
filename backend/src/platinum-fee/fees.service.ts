@@ -3,13 +3,18 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
-import { PlatformFee, FeeCollectionStatus } from './entities/platform-fee.entity';
-import { FeeConfiguration } from './entities/fee-configuration.entity';
-import { FeeCalculatorService } from './fee-calculator.service';
-import { UpdateFeeConfigDto, FeeLedgerQueryDto } from './dto/update-fee-config.dto';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import {
+  Repository,
+  DataSource,
+  MoreThanOrEqual,
+  LessThanOrEqual,
+} from "typeorm";
+import { FeeCollectionStatus, PlatformFee } from "./platform-fee.entity";
+import { FeeConfiguration } from "./fee-configuration.entity";
+import { FeeCalculatorService } from "./fee-calculator.service";
+import { FeeLedgerQueryDto, UpdateFeeConfigDto } from "./update-fee-config.dto";
 
 export interface RecordFeeInput {
   tipId: string;
@@ -44,7 +49,7 @@ export class FeesService {
   async getActiveConfiguration(): Promise<FeeConfiguration> {
     const config = await this.feeConfigRepo.findOne({
       where: { effectiveFrom: LessThanOrEqual(new Date()) },
-      order: { effectiveFrom: 'DESC' },
+      order: { effectiveFrom: "DESC" },
     });
 
     if (!config) {
@@ -55,7 +60,7 @@ export class FeesService {
       defaults.maximumFeeXLM = 100;
       defaults.waivedForVerifiedArtists = false;
       defaults.effectiveFrom = new Date(0);
-      defaults.createdBy = 'system';
+      defaults.createdBy = "system";
       return defaults;
     }
 
@@ -67,7 +72,9 @@ export class FeesService {
     adminUserId: string,
   ): Promise<FeeConfiguration> {
     if (Number(dto.minimumFeeXLM) > Number(dto.maximumFeeXLM)) {
-      throw new BadRequestException('minimumFeeXLM cannot exceed maximumFeeXLM');
+      throw new BadRequestException(
+        "minimumFeeXLM cannot exceed maximumFeeXLM",
+      );
     }
 
     // Always create a new record — never overwrite historical configs
@@ -76,17 +83,21 @@ export class FeesService {
       minimumFeeXLM: dto.minimumFeeXLM,
       maximumFeeXLM: dto.maximumFeeXLM,
       waivedForVerifiedArtists: dto.waivedForVerifiedArtists,
-      effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : new Date(),
+      effectiveFrom: dto.effectiveFrom
+        ? new Date(dto.effectiveFrom)
+        : new Date(),
       createdBy: adminUserId,
     });
 
     const saved = await this.feeConfigRepo.save(newConfig);
-    this.logger.log(`Fee configuration updated by admin ${adminUserId}: ${JSON.stringify(saved)}`);
+    this.logger.log(
+      `Fee configuration updated by admin ${adminUserId}: ${JSON.stringify(saved)}`,
+    );
     return saved;
   }
 
   async getConfigurationHistory(): Promise<FeeConfiguration[]> {
-    return this.feeConfigRepo.find({ order: { effectiveFrom: 'DESC' } });
+    return this.feeConfigRepo.find({ order: { effectiveFrom: "DESC" } });
   }
 
   // ─── Fee Recording ────────────────────────────────────────────────────────
@@ -120,7 +131,7 @@ export class FeesService {
     const fee = await this.platformFeeRepo.findOne({ where: { id: feeId } });
     if (!fee) throw new NotFoundException(`PlatformFee ${feeId} not found`);
     if (fee.collectionStatus === FeeCollectionStatus.WAIVED) {
-      throw new BadRequestException('Cannot collect a waived fee');
+      throw new BadRequestException("Cannot collect a waived fee");
     }
 
     fee.collectionStatus = FeeCollectionStatus.COLLECTED;
@@ -133,23 +144,26 @@ export class FeesService {
 
   async getFeeByTipId(tipId: string): Promise<PlatformFee> {
     const fee = await this.platformFeeRepo.findOne({ where: { tipId } });
-    if (!fee) throw new NotFoundException(`No fee record found for tip ${tipId}`);
+    if (!fee)
+      throw new NotFoundException(`No fee record found for tip ${tipId}`);
     return fee;
   }
 
-  async getFeeLedger(query: FeeLedgerQueryDto): Promise<PaginatedResult<PlatformFee>> {
+  async getFeeLedger(
+    query: FeeLedgerQueryDto,
+  ): Promise<PaginatedResult<PlatformFee>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const qb = this.platformFeeRepo.createQueryBuilder('fee');
+    const qb = this.platformFeeRepo.createQueryBuilder("fee");
 
     if (query.period) {
       const since = this.feeCalculator.parsePeriodToDate(query.period);
-      qb.where('fee.created_at >= :since', { since });
+      qb.where("fee.created_at >= :since", { since });
     }
 
-    qb.orderBy('fee.created_at', 'DESC').skip(skip).take(limit);
+    qb.orderBy("fee.created_at", "DESC").skip(skip).take(limit);
 
     const [data, total] = await qb.getManyAndCount();
 
@@ -173,41 +187,44 @@ export class FeesService {
     averageFeePercentage: number;
   }> {
     const qb = this.platformFeeRepo
-      .createQueryBuilder('fee')
-      .select('SUM(CAST(fee.fee_amount_xlm AS DECIMAL))', 'totalFeesXLM')
-      .addSelect('SUM(CAST(fee.fee_amount_usd AS DECIMAL))', 'totalFeesUSD')
+      .createQueryBuilder("fee")
+      .select("SUM(CAST(fee.fee_amount_xlm AS DECIMAL))", "totalFeesXLM")
+      .addSelect("SUM(CAST(fee.fee_amount_usd AS DECIMAL))", "totalFeesUSD")
       .addSelect(
         `SUM(CASE WHEN fee.collection_status = 'collected' THEN CAST(fee.fee_amount_xlm AS DECIMAL) ELSE 0 END)`,
-        'totalCollected',
+        "totalCollected",
       )
       .addSelect(
         `SUM(CASE WHEN fee.collection_status = 'pending' THEN CAST(fee.fee_amount_xlm AS DECIMAL) ELSE 0 END)`,
-        'totalPending',
+        "totalPending",
       )
       .addSelect(
         `SUM(CASE WHEN fee.collection_status = 'waived' THEN CAST(fee.fee_amount_xlm AS DECIMAL) ELSE 0 END)`,
-        'totalWaived',
+        "totalWaived",
       )
-      .addSelect('COUNT(*)', 'totalTransactions')
-      .addSelect('AVG(CAST(fee.fee_amount_xlm AS DECIMAL))', 'averageFeeXLM')
-      .addSelect('AVG(CAST(fee.fee_percentage AS DECIMAL))', 'averageFeePercentage');
+      .addSelect("COUNT(*)", "totalTransactions")
+      .addSelect("AVG(CAST(fee.fee_amount_xlm AS DECIMAL))", "averageFeeXLM")
+      .addSelect(
+        "AVG(CAST(fee.fee_percentage AS DECIMAL))",
+        "averageFeePercentage",
+      );
 
     if (period) {
       const since = this.feeCalculator.parsePeriodToDate(period);
-      qb.where('fee.created_at >= :since', { since });
+      qb.where("fee.created_at >= :since", { since });
     }
 
     const raw = await qb.getRawOne();
 
     return {
-      totalFeesXLM: parseFloat(raw.totalFeesXLM ?? '0'),
-      totalFeesUSD: parseFloat(raw.totalFeesUSD ?? '0'),
-      totalCollected: parseFloat(raw.totalCollected ?? '0'),
-      totalPending: parseFloat(raw.totalPending ?? '0'),
-      totalWaived: parseFloat(raw.totalWaived ?? '0'),
-      totalTransactions: parseInt(raw.totalTransactions ?? '0', 10),
-      averageFeeXLM: parseFloat(raw.averageFeeXLM ?? '0'),
-      averageFeePercentage: parseFloat(raw.averageFeePercentage ?? '0'),
+      totalFeesXLM: parseFloat(raw.totalFeesXLM ?? "0"),
+      totalFeesUSD: parseFloat(raw.totalFeesUSD ?? "0"),
+      totalCollected: parseFloat(raw.totalCollected ?? "0"),
+      totalPending: parseFloat(raw.totalPending ?? "0"),
+      totalWaived: parseFloat(raw.totalWaived ?? "0"),
+      totalTransactions: parseInt(raw.totalTransactions ?? "0", 10),
+      averageFeeXLM: parseFloat(raw.averageFeeXLM ?? "0"),
+      averageFeePercentage: parseFloat(raw.averageFeePercentage ?? "0"),
     };
   }
 
@@ -240,12 +257,12 @@ export class FeesService {
     const row = raw[0] ?? {};
     return {
       artistId,
-      totalFeesXLM: parseFloat(row.totalFeesXLM ?? '0'),
-      totalFeesUSD: parseFloat(row.totalFeesUSD ?? '0'),
-      waivedCount: parseInt(row.waivedCount ?? '0', 10),
-      collectedCount: parseInt(row.collectedCount ?? '0', 10),
-      pendingCount: parseInt(row.pendingCount ?? '0', 10),
-      totalTips: parseInt(row.totalTips ?? '0', 10),
+      totalFeesXLM: parseFloat(row.totalFeesXLM ?? "0"),
+      totalFeesUSD: parseFloat(row.totalFeesUSD ?? "0"),
+      waivedCount: parseInt(row.waivedCount ?? "0", 10),
+      collectedCount: parseInt(row.collectedCount ?? "0", 10),
+      pendingCount: parseInt(row.pendingCount ?? "0", 10),
+      totalTips: parseInt(row.totalTips ?? "0", 10),
     };
   }
 }

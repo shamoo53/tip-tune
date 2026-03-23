@@ -10,14 +10,15 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { LicensingService } from './licensing.service';
+} from "@nestjs/common";
+import { LicensingService } from "./licensing.service";
+
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import {
-  CreateTrackLicenseDto,
   CreateLicenseRequestDto,
+  CreateTrackLicenseDto,
   RespondToLicenseRequestDto,
-} from './dto/licensing.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+} from "./licensing.dto";
 
 /**
  * Authenticated request shape expected from JwtAuthGuard.
@@ -30,7 +31,7 @@ interface AuthRequest extends Request {
   };
 }
 
-@Controller('api/licenses')
+@Controller("api/licenses")
 @UseGuards(JwtAuthGuard)
 export class LicensingController {
   constructor(private readonly licensingService: LicensingService) {}
@@ -41,21 +42,25 @@ export class LicensingController {
    * POST /api/licenses/track/:trackId
    * Create or update the license for a track (artist only).
    */
-  @Post('track/:trackId')
+  @Post("track/:trackId")
   async upsertLicense(
-    @Param('trackId', ParseUUIDPipe) trackId: string,
+    @Param("trackId", ParseUUIDPipe) trackId: string,
     @Body() dto: CreateTrackLicenseDto,
     @Request() req: AuthRequest,
   ) {
-    return this.licensingService.createOrUpdateLicense(trackId, dto, req.user.id);
+    return this.licensingService.createOrUpdateLicense(
+      trackId,
+      dto,
+      req.user.id,
+    );
   }
 
   /**
    * GET /api/licenses/track/:trackId
    * Retrieve licensing info for a track (public).
    */
-  @Get('track/:trackId')
-  async getLicense(@Param('trackId', ParseUUIDPipe) trackId: string) {
+  @Get("track/:trackId")
+  async getLicense(@Param("trackId", ParseUUIDPipe) trackId: string) {
     return this.licensingService.getLicenseByTrack(trackId);
   }
 
@@ -65,7 +70,7 @@ export class LicensingController {
    * POST /api/licenses/request
    * Submit a license request for a track.
    */
-  @Post('request')
+  @Post("request")
   @HttpCode(HttpStatus.CREATED)
   async createRequest(
     @Body() dto: CreateLicenseRequestDto,
@@ -78,7 +83,7 @@ export class LicensingController {
    * GET /api/licenses/requests/artist
    * List all license requests for the authenticated artist's tracks.
    */
-  @Get('requests/artist')
+  @Get("requests/artist")
   async getArtistRequests(@Request() req: AuthRequest) {
     const trackIds = req.user.trackIds ?? [];
     return this.licensingService.getArtistRequests(req.user.id, trackIds);
@@ -88,9 +93,9 @@ export class LicensingController {
    * PUT /api/licenses/requests/:requestId/respond
    * Approve or reject a license request (artist only).
    */
-  @Put('requests/:requestId/respond')
+  @Put("requests/:requestId/respond")
   async respondToRequest(
-    @Param('requestId', ParseUUIDPipe) requestId: string,
+    @Param("requestId", ParseUUIDPipe) requestId: string,
     @Body() dto: RespondToLicenseRequestDto,
     @Request() req: AuthRequest,
   ) {

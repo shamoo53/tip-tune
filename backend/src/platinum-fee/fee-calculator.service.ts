@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { FeeConfiguration } from '../entities/fee-configuration.entity';
+import { Injectable } from "@nestjs/common";
+import { FeeConfiguration } from "./fee-configuration.entity";
 
 export interface FeeCalculationInput {
   amountXLM: number;
@@ -93,16 +93,16 @@ export class FeeCalculatorService {
     const unit = match[2];
 
     switch (unit) {
-      case 'd':
+      case "d":
         now.setDate(now.getDate() - value);
         break;
-      case 'w':
+      case "w":
         now.setDate(now.getDate() - value * 7);
         break;
-      case 'm':
+      case "m":
         now.setMonth(now.getMonth() - value);
         break;
-      case 'y':
+      case "y":
         now.setFullYear(now.getFullYear() - value);
         break;
     }

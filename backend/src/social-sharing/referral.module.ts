@@ -1,16 +1,13 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
-import { ReferralCode } from './entities/referral-code.entity';
-import { Referral } from './entities/referral.entity';
-import { ReferralService } from './referral.service';
-import { ReferralController } from './referral.controller';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { ConfigModule } from "@nestjs/config";
+import { ReferralService } from "./referral.service";
+import { ReferralController } from "./referral.controller";
+import { ReferralCode } from "./referral-code.entity";
+import { Referral } from "./referral.entity";
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ReferralCode, Referral]),
-    ConfigModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ReferralCode, Referral]), ConfigModule],
   controllers: [ReferralController],
   providers: [ReferralService],
   exports: [ReferralService], // Export so TipModule can call claimReward()

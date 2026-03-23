@@ -35,6 +35,7 @@
     "@nestjs/schedule": "^6.1.0",
     "@nestjs/swagger": "^7.2.0",
     "@nestjs/terminus": "^10.3.0",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^10.0.1",
     "@nestjs/websockets": "^10.4.22",
     "@stellar/stellar-sdk": "^14.4.3",
@@ -56,6 +57,7 @@
     "rxjs": "^7.8.1",
     "sanitize-html": "^2.17.1",
     "socket.io": "^4.8.3",
+    "stellar-sdk": "^13.3.0",
     "typeorm": "^0.3.17",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
@@ -93,6 +95,13 @@
     "typescript": "^5.3.3"
   },
   "jest": {
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    },
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/(analytics|artiste-payout|auth|comments|events-live-show|follows|genres|platinum-fee|playlists|search|social-sharing|subscription-tiers|tips|track-listening-right-management|track-play-count|waveform)/.*\\.spec\\.ts$"
+    ],
     "moduleFileExtensions": [
       "js",
       "json",

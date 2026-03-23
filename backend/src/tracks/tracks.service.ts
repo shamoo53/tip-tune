@@ -1,19 +1,24 @@
-import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
-import { PaginatedResponse } from '../common/dto/paginated-response.dto';
-import { paginate } from '../common/helpers/paginate.helper';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Track } from './entities/track.entity';
-import { CreateTrackDto } from './dto/create-track.dto';
-import { TrackFilterDto } from './dto/pagination.dto';
-import { StorageService } from '../storage/storage.service';
-import { ActivitiesService } from '../activities/activities.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { TrackUploadedEvent } from './events/track-uploaded.event';
-import { TrackPlayedEvent } from './events/track-played.event';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  Inject,
+  forwardRef,
+} from "@nestjs/common";
+import { PaginatedResponse } from "../common/dto/paginated-response.dto";
+import { paginate } from "../common/helpers/paginate.helper";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Track } from "./entities/track.entity";
+import { CreateTrackDto } from "./dto/create-track.dto";
+import { TrackFilterDto } from "./dto/pagination.dto";
+import { StorageService } from "../storage/storage.service";
+import { ActivitiesService } from "../activities/activities.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { TrackUploadedEvent } from "./events/track-uploaded.event";
+import { TrackPlayedEvent } from "./events/track-played.event";
 import { LicensingService } from "@/track-listening-right-management/licensing.service";
-
-
+import { PaginatedResult } from "@/events-live-show/events.service";
 
 @Injectable()
 export class TracksService {

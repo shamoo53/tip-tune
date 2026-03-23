@@ -62,6 +62,9 @@ export class Tip {
   @Column({ length: 56, nullable: true })
   assetIssuer?: string;
 
+  @Column()
+  fromUser: string;
+
   @Column({
     type: "enum",
     enum: ["native", "credit_alphanum4", "credit_alphanum12"],
@@ -139,6 +142,9 @@ export class Tip {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column()
+  isDeleted: boolean;
 
   @ManyToOne(() => Artist, (artist) => artist.tips, { onDelete: "CASCADE" })
   @JoinColumn({ name: "artistId" })

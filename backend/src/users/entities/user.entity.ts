@@ -1,9 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, DeleteDateColumn } from 'typeorm';
-  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
-  deletedAt: Date;
-
-  @Column({ default: false, name: 'is_deleted' })
-  isDeleted: boolean;
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+  DeleteDateColumn,
+} from "typeorm";
 
 export enum UserRole {
   USER = "user",
@@ -16,9 +19,9 @@ export enum UserStatus {
   BANNED = "banned",
 }
 
-@Entity('users')
+@Entity("users")
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column({ length: 255, unique: true })
@@ -29,36 +32,41 @@ export class User {
   @Index()
   email: string;
 
-  @Column({ length: 255, name: 'wallet_address' })
+  @Column({ length: 255, name: "wallet_address" })
   walletAddress: string;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: UserRole,
     default: UserRole.USER,
   })
   role: UserRole;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: UserStatus,
     default: UserStatus.ACTIVE,
   })
   status: UserStatus;
 
-  @Column({ length: 500, nullable: true, name: 'profile_image' })
+  @Column({ length: 500, nullable: true, name: "profile_image" })
   profileImage: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   bio: string;
 
-  @Column({ default: false, name: 'is_artist' })
+  @Column({ default: false, name: "is_artist" })
   isArtist: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
-}
 
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
+  deletedAt: Date;
+
+  @Column({ default: false, name: "is_deleted" })
+  isDeleted: boolean;
+}

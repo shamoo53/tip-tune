@@ -1,8 +1,3 @@
-  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
-  deletedAt: Date;
-
-  @Column({ default: false, name: 'is_deleted' })
-  isDeleted: boolean;
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -12,12 +7,12 @@ import {
   OneToOne,
   JoinColumn,
   OneToMany,
+  DeleteDateColumn,
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
 import { Track } from "../../tracks/entities/track.entity";
 import { Tip } from "../../tips/entities/tip.entity";
 import { Collaboration } from "../../collaboration/entities/collaboration.entity";
-import { ArtistStatus } from "../../artist-status/entities/artist-status.entity";
 
 export enum ArtistStatus {
   ACTIVE = "active",
@@ -49,11 +44,14 @@ export class Artist {
   @OneToMany(() => Collaboration, (collaboration) => collaboration.artist)
   collaborations: Collaboration[];
 
-  @OneToOne(() => ArtistStatus, (status) => status.artist)
-  artistStatus: ArtistStatus;
-
   @Column()
   artistName: string;
+
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
+  deletedAt: Date;
+
+  @Column({ default: false, name: "is_deleted" })
+  isDeleted: boolean;
 
   @Column()
   genre: string;

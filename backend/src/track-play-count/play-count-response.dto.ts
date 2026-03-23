@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PlaySource } from '../entities/track-play.entity';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { PlaySource } from "./track-play.entity";
 
 export class RecordPlayResponseDto {
   @ApiProperty()
@@ -39,7 +39,7 @@ export class SourceBreakdownDto {
   @ApiProperty()
   trackId: string;
 
-  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: "object", additionalProperties: { type: "number" } })
   sources: Record<PlaySource, number>;
 }
 

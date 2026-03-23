@@ -5,9 +5,9 @@ import {
   IsString,
   IsUrl,
   IsNotEmpty,
-} from 'class-validator';
-import { LicenseType } from '../entities/track-license.entity';
-import { LicenseRequestStatus } from '../entities/license-request.entity';
+} from "class-validator";
+import { LicenseType } from "./track-license.entity";
+import { LicenseRequestStatus } from "./license-request.entity";
 
 export class CreateTrackLicenseDto {
   @IsEnum(LicenseType)

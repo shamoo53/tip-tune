@@ -1,21 +1,17 @@
+import { Injectable, Logger, BadRequestException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, MoreThan, DataSource } from "typeorm";
+import * as crypto from "crypto";
+import { PlaySource, TrackPlay } from "./track-play.entity";
 import {
-  Injectable,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan, DataSource } from 'typeorm';
-import * as crypto from 'crypto';
-import { TrackPlay, PlaySource } from './entities/track-play.entity';
-import { RecordPlayDto } from './dto/record-play.dto';
-import {
-  RecordPlayResponseDto,
-  TrackStatsDto,
-  SourceBreakdownDto,
   ArtistOverviewDto,
-  TopTracksDto,
+  RecordPlayResponseDto,
+  SourceBreakdownDto,
   TopTrackDto,
-} from './dto/play-count-response.dto';
+  TopTracksDto,
+  TrackStatsDto,
+} from "./play-count-response.dto";
+import { RecordPlayDto } from "./record-play.dto";
 
 export const MINIMUM_LISTEN_SECONDS = 30;
 export const DEDUP_WINDOW_HOURS = 1;
@@ -33,7 +29,10 @@ export class PlayCountService {
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
   hashIp(ip: string): string {
-    return crypto.createHash('sha256').update(ip + 'tip-tune-salt').digest('hex');
+    return crypto
+      .createHash("sha256")
+      .update(ip + "tip-tune-salt")
+      .digest("hex");
   }
 
   private dedupWindowStart(): Date {
@@ -127,7 +126,8 @@ export class PlayCountService {
       await this.trackPlayRepo.save(play);
       return {
         counted: false,
-        reason: 'Duplicate play detected within the 1-hour deduplication window',
+        reason:
+          "Duplicate play detected within the 1-hour deduplication window",
         playId: play.id,
       };
     }
@@ -138,44 +138,46 @@ export class PlayCountService {
       await manager.save(TrackPlay, play);
       await manager
         .createQueryBuilder()
-        .update('tracks')
-        .set({ plays: () => 'plays + 1' })
-        .where('id = :id', { id: dto.trackId })
+        .update("tracks")
+        .set({ plays: () => "plays + 1" })
+        .where("id = :id", { id: dto.trackId })
         .execute();
     });
 
-    this.logger.log(`Counted play for track ${dto.trackId} by ${dto.userId ?? dto.sessionId}`);
+    this.logger.log(
+      `Counted play for track ${dto.trackId} by ${dto.userId ?? dto.sessionId}`,
+    );
 
     return {
       counted: true,
-      reason: 'Play recorded successfully',
+      reason: "Play recorded successfully",
       playId: play.id,
     };
   }
 
   // ─── Track Stats ─────────────────────────────────────────────────────────────
 
-  async getTrackStats(trackId: string, period = '7d'): Promise<TrackStatsDto> {
+  async getTrackStats(trackId: string, period = "7d"): Promise<TrackStatsDto> {
     const since = this.periodToDate(period);
 
     const qb = this.trackPlayRepo
-      .createQueryBuilder('p')
-      .where('p.track_id = :trackId', { trackId })
-      .andWhere('p.played_at >= :since', { since });
+      .createQueryBuilder("p")
+      .where("p.track_id = :trackId", { trackId })
+      .andWhere("p.played_at >= :since", { since });
 
     const [totalPlays, totalEvents, avgDuration, completedCount] =
       await Promise.all([
-        qb.clone().andWhere('p.counted_as_play = true').getCount(),
+        qb.clone().andWhere("p.counted_as_play = true").getCount(),
         qb.clone().getCount(),
         qb
           .clone()
-          .select('COALESCE(AVG(p.listen_duration), 0)', 'avg')
+          .select("COALESCE(AVG(p.listen_duration), 0)", "avg")
           .getRawOne<{ avg: string }>()
-          .then((r) => parseFloat(r?.avg ?? '0')),
+          .then((r) => parseFloat(r?.avg ?? "0")),
         qb
           .clone()
-          .andWhere('p.counted_as_play = true')
-          .andWhere('p.completed_full = true')
+          .andWhere("p.counted_as_play = true")
+          .andWhere("p.completed_full = true")
           .getCount(),
       ]);
 
@@ -184,13 +186,13 @@ export class PlayCountService {
     const completionRate = totalPlays > 0 ? completedCount / totalPlays : 0;
 
     const uniqueListeners = await this.trackPlayRepo
-      .createQueryBuilder('p')
-      .select('COUNT(DISTINCT COALESCE(p.user_id::text, p.session_id))', 'cnt')
-      .where('p.track_id = :trackId', { trackId })
-      .andWhere('p.counted_as_play = true')
-      .andWhere('p.played_at >= :since', { since })
+      .createQueryBuilder("p")
+      .select("COUNT(DISTINCT COALESCE(p.user_id::text, p.session_id))", "cnt")
+      .where("p.track_id = :trackId", { trackId })
+      .andWhere("p.counted_as_play = true")
+      .andWhere("p.played_at >= :since", { since })
       .getRawOne<{ cnt: string }>()
-      .then((r) => parseInt(r?.cnt ?? '0', 10));
+      .then((r) => parseInt(r?.cnt ?? "0", 10));
 
     return {
       trackId,
@@ -207,12 +209,12 @@ export class PlayCountService {
 
   async getTrackSources(trackId: string): Promise<SourceBreakdownDto> {
     const rows = await this.trackPlayRepo
-      .createQueryBuilder('p')
-      .select('p.source', 'source')
-      .addSelect('COUNT(*)', 'cnt')
-      .where('p.track_id = :trackId', { trackId })
-      .andWhere('p.counted_as_play = true')
-      .groupBy('p.source')
+      .createQueryBuilder("p")
+      .select("p.source", "source")
+      .addSelect("COUNT(*)", "cnt")
+      .where("p.track_id = :trackId", { trackId })
+      .andWhere("p.counted_as_play = true")
+      .groupBy("p.source")
       .getRawMany<{ source: PlaySource; cnt: string }>();
 
     const sources = Object.values(PlaySource).reduce(
@@ -232,19 +234,24 @@ export class PlayCountService {
     // Fetch per-track aggregates for this artist
     const trackRows = await this.dataSource
       .createQueryBuilder()
-      .select('p.track_id', 'trackId')
-      .addSelect('COUNT(p.id)', 'plays')
+      .select("p.track_id", "trackId")
+      .addSelect("COUNT(p.id)", "plays")
       .addSelect(
-        'AVG(CASE WHEN p.completed_full THEN 1.0 ELSE 0.0 END)',
-        'completionRate',
+        "AVG(CASE WHEN p.completed_full THEN 1.0 ELSE 0.0 END)",
+        "completionRate",
       )
-      .from(TrackPlay, 'p')
-      .innerJoin('tracks', 't', 't.id = p.track_id AND t.artist_id = :artistId', {
-        artistId,
-      })
-      .where('p.counted_as_play = true')
-      .groupBy('p.track_id')
-      .orderBy('plays', 'DESC')
+      .from(TrackPlay, "p")
+      .innerJoin(
+        "tracks",
+        "t",
+        "t.id = p.track_id AND t.artist_id = :artistId",
+        {
+          artistId,
+        },
+      )
+      .where("p.counted_as_play = true")
+      .groupBy("p.track_id")
+      .orderBy("plays", "DESC")
       .getRawMany<{ trackId: string; plays: string; completionRate: string }>();
 
     const totalPlays = trackRows.reduce((s, r) => s + parseInt(r.plays, 10), 0);
@@ -256,14 +263,19 @@ export class PlayCountService {
 
     const uniqueListeners = await this.dataSource
       .createQueryBuilder()
-      .select('COUNT(DISTINCT COALESCE(p.user_id::text, p.session_id))', 'cnt')
-      .from(TrackPlay, 'p')
-      .innerJoin('tracks', 't', 't.id = p.track_id AND t.artist_id = :artistId', {
-        artistId,
-      })
-      .where('p.counted_as_play = true')
+      .select("COUNT(DISTINCT COALESCE(p.user_id::text, p.session_id))", "cnt")
+      .from(TrackPlay, "p")
+      .innerJoin(
+        "tracks",
+        "t",
+        "t.id = p.track_id AND t.artist_id = :artistId",
+        {
+          artistId,
+        },
+      )
+      .where("p.counted_as_play = true")
       .getRawOne<{ cnt: string }>()
-      .then((r) => parseInt(r?.cnt ?? '0', 10));
+      .then((r) => parseInt(r?.cnt ?? "0", 10));
 
     const topTracks: TopTrackDto[] = trackRows.slice(0, 5).map((r) => ({
       trackId: r.trackId,
@@ -283,21 +295,21 @@ export class PlayCountService {
 
   // ─── Top Tracks ───────────────────────────────────────────────────────────
 
-  async getTopTracks(period = '7d', limit = 20): Promise<TopTracksDto> {
+  async getTopTracks(period = "7d", limit = 20): Promise<TopTracksDto> {
     const since = this.periodToDate(period);
 
     const rows = await this.trackPlayRepo
-      .createQueryBuilder('p')
-      .select('p.track_id', 'trackId')
-      .addSelect('COUNT(p.id)', 'plays')
+      .createQueryBuilder("p")
+      .select("p.track_id", "trackId")
+      .addSelect("COUNT(p.id)", "plays")
       .addSelect(
-        'AVG(CASE WHEN p.completed_full THEN 1.0 ELSE 0.0 END)',
-        'completionRate',
+        "AVG(CASE WHEN p.completed_full THEN 1.0 ELSE 0.0 END)",
+        "completionRate",
       )
-      .where('p.counted_as_play = true')
-      .andWhere('p.played_at >= :since', { since })
-      .groupBy('p.track_id')
-      .orderBy('plays', 'DESC')
+      .where("p.counted_as_play = true")
+      .andWhere("p.played_at >= :since", { since })
+      .groupBy("p.track_id")
+      .orderBy("plays", "DESC")
       .limit(limit)
       .getRawMany<{ trackId: string; plays: string; completionRate: string }>();
 
@@ -316,22 +328,25 @@ export class PlayCountService {
   periodToDate(period: string): Date {
     const now = new Date();
     const match = /^(\d+)([dwhm])$/.exec(period);
-    if (!match) throw new BadRequestException(`Invalid period format: ${period}. Use e.g. 7d, 4w, 1m`);
+    if (!match)
+      throw new BadRequestException(
+        `Invalid period format: ${period}. Use e.g. 7d, 4w, 1m`,
+      );
 
     const value = parseInt(match[1], 10);
     const unit = match[2];
 
     switch (unit) {
-      case 'd':
+      case "d":
         now.setDate(now.getDate() - value);
         break;
-      case 'w':
+      case "w":
         now.setDate(now.getDate() - value * 7);
         break;
-      case 'h':
+      case "h":
         now.setHours(now.getHours() - value);
         break;
-      case 'm':
+      case "m":
         now.setMonth(now.getMonth() - value);
         break;
     }

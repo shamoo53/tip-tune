@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "artist-allowlist"
+name = "auto-royalty-distribution"
 version = "0.1.0"
 dependencies = [
  "soroban-sdk",

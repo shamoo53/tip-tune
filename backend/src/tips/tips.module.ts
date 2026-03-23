@@ -13,10 +13,11 @@ import { BlocksModule } from "../blocks/blocks.module";
 // --- NEW ADDITIONS ---
 import { TracksModule } from "../tracks/tracks.module";
 import { TipReconciliationService } from "./tip-reconciliation.service";
+import { Track } from "@/tracks/entities/track.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Tip]),
+    TypeOrmModule.forFeature([Tip, Track]),
     StellarModule,
     UsersModule,
     NotificationsModule,

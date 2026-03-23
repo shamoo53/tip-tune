@@ -8,19 +8,19 @@ import {
   MaxLength,
   MinLength,
   IsNotEmpty,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EventType } from '../entities/artist-event.entity';
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { EventType } from "./artist-event.entity";
 
 export class CreateArtistEventDto {
-  @ApiProperty({ example: 'Summer Live Stream' })
+  @ApiProperty({ example: "Summer Live Stream" })
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
   @MaxLength(255)
   title: string;
 
-  @ApiProperty({ example: 'Join me for an exclusive live set!' })
+  @ApiProperty({ example: "Join me for an exclusive live set!" })
   @IsString()
   @IsNotEmpty()
   description: string;
@@ -29,27 +29,27 @@ export class CreateArtistEventDto {
   @IsEnum(EventType)
   eventType: EventType;
 
-  @ApiProperty({ example: '2026-06-15T20:00:00Z' })
+  @ApiProperty({ example: "2026-06-15T20:00:00Z" })
   @IsDateString()
   startTime: string;
 
-  @ApiPropertyOptional({ example: '2026-06-15T22:00:00Z' })
+  @ApiPropertyOptional({ example: "2026-06-15T22:00:00Z" })
   @IsOptional()
   @IsDateString()
   endTime?: string;
 
-  @ApiPropertyOptional({ example: 'Madison Square Garden, NY' })
+  @ApiPropertyOptional({ example: "Madison Square Garden, NY" })
   @IsOptional()
   @IsString()
   @MaxLength(255)
   venue?: string;
 
-  @ApiPropertyOptional({ example: 'https://stream.example.com/live/123' })
+  @ApiPropertyOptional({ example: "https://stream.example.com/live/123" })
   @IsOptional()
   @IsUrl()
   streamUrl?: string;
 
-  @ApiPropertyOptional({ example: 'https://tickets.example.com/event/123' })
+  @ApiPropertyOptional({ example: "https://tickets.example.com/event/123" })
   @IsOptional()
   @IsUrl()
   ticketUrl?: string;

@@ -6,27 +6,33 @@ import {
   IsDateString,
   IsNumber,
   Min,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { RewardType } from '../entities/referral-code.entity';
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { RewardType } from "./referral-code.entity";
 
 export class GenerateReferralCodeDto {
   @ApiProperty({ enum: RewardType, example: RewardType.XLM_BONUS })
   @IsEnum(RewardType)
   rewardType: RewardType;
 
-  @ApiProperty({ example: 10.5, description: 'Reward value (XLM amount, discount %, etc.)' })
+  @ApiProperty({
+    example: 10.5,
+    description: "Reward value (XLM amount, discount %, etc.)",
+  })
   @IsNumber()
   @IsPositive()
   rewardValue: number;
 
-  @ApiPropertyOptional({ example: 100, description: 'Max number of times code can be used' })
+  @ApiPropertyOptional({
+    example: 100,
+    description: "Max number of times code can be used",
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()
   maxUsages?: number;
 
-  @ApiPropertyOptional({ example: '2026-12-31T23:59:59Z' })
+  @ApiPropertyOptional({ example: "2026-12-31T23:59:59Z" })
   @IsOptional()
   @IsDateString()
   expiresAt?: string;

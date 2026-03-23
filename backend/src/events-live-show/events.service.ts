@@ -4,17 +4,25 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, MoreThan, In, LessThanOrEqual, MoreThanOrEqual, Between } from 'typeorm';
-import { ArtistEvent } from './entities/artist-event.entity';
-import { EventRSVP } from './entities/event-rsvp.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import {
+  Repository,
+  DataSource,
+  MoreThan,
+  In,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Between,
+} from "typeorm";
+import { ArtistEvent } from "./artist-event.entity";
+import { EventRSVP } from "./event-rsvp.entity";
 import {
   CreateArtistEventDto,
-  UpdateArtistEventDto,
-  RsvpDto,
   PaginationQueryDto,
-} from './dto/events.dto';
+  RsvpDto,
+  UpdateArtistEventDto,
+} from "./events.dto";
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -36,10 +44,13 @@ export class EventsService {
 
   // ─── CRUD ───────────────────────────────────────────────────────────────────
 
-  async create(artistId: string, dto: CreateArtistEventDto): Promise<ArtistEvent> {
+  async create(
+    artistId: string,
+    dto: CreateArtistEventDto,
+  ): Promise<ArtistEvent> {
     const startTime = new Date(dto.startTime);
     if (startTime <= new Date()) {
-      throw new BadRequestException('Event start time must be in the future');
+      throw new BadRequestException("Event start time must be in the future");
     }
 
     const event = this.eventRepo.create({
@@ -62,7 +73,7 @@ export class EventsService {
 
     const [data, total] = await this.eventRepo.findAndCount({
       where: { artistId },
-      order: { startTime: 'ASC' },
+      order: { startTime: "ASC" },
       skip,
       take: limit,
     });
@@ -84,13 +95,13 @@ export class EventsService {
     const event = await this.findOne(id);
 
     if (event.artistId !== artistId) {
-      throw new ForbiddenException('You can only update your own events');
+      throw new ForbiddenException("You can only update your own events");
     }
 
     if (dto.startTime) {
       const startTime = new Date(dto.startTime);
       if (startTime <= new Date()) {
-        throw new BadRequestException('Event start time must be in the future');
+        throw new BadRequestException("Event start time must be in the future");
       }
       event.startTime = startTime;
     }
@@ -113,25 +124,29 @@ export class EventsService {
   async remove(id: string, artistId: string): Promise<void> {
     const event = await this.findOne(id);
     if (event.artistId !== artistId) {
-      throw new ForbiddenException('You can only delete your own events');
+      throw new ForbiddenException("You can only delete your own events");
     }
     await this.eventRepo.remove(event);
   }
 
   // ─── RSVP ───────────────────────────────────────────────────────────────────
 
-  async rsvp(eventId: string, userId: string, dto: RsvpDto): Promise<EventRSVP> {
+  async rsvp(
+    eventId: string,
+    userId: string,
+    dto: RsvpDto,
+  ): Promise<EventRSVP> {
     const event = await this.findOne(eventId);
 
     if (event.startTime <= new Date()) {
-      throw new BadRequestException('Cannot RSVP to a past event');
+      throw new BadRequestException("Cannot RSVP to a past event");
     }
 
     const existing = await this.rsvpRepo.findOne({
       where: { eventId, userId },
     });
     if (existing) {
-      throw new ConflictException('You have already RSVPed to this event');
+      throw new ConflictException("You have already RSVPed to this event");
     }
 
     return this.dataSource.transaction(async (manager) => {
@@ -141,7 +156,7 @@ export class EventsService {
         reminderEnabled: dto.reminderEnabled ?? true,
       });
       await manager.save(rsvp);
-      await manager.increment(ArtistEvent, { id: eventId }, 'rsvpCount', 1);
+      await manager.increment(ArtistEvent, { id: eventId }, "rsvpCount", 1);
       return rsvp;
     });
   }
@@ -150,15 +165,15 @@ export class EventsService {
     const event = await this.findOne(eventId);
 
     if (event.startTime <= new Date()) {
-      throw new BadRequestException('Cannot un-RSVP from a past event');
+      throw new BadRequestException("Cannot un-RSVP from a past event");
     }
 
     const rsvp = await this.rsvpRepo.findOne({ where: { eventId, userId } });
-    if (!rsvp) throw new NotFoundException('RSVP not found');
+    if (!rsvp) throw new NotFoundException("RSVP not found");
 
     await this.dataSource.transaction(async (manager) => {
       await manager.remove(rsvp);
-      await manager.decrement(ArtistEvent, { id: eventId }, 'rsvpCount', 1);
+      await manager.decrement(ArtistEvent, { id: eventId }, "rsvpCount", 1);
     });
   }
 
@@ -174,7 +189,7 @@ export class EventsService {
 
     const [data, total] = await this.rsvpRepo.findAndCount({
       where: { eventId },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
       skip,
       take: limit,
     });
@@ -201,7 +216,7 @@ export class EventsService {
         artistId: In(followedArtistIds),
         startTime: MoreThan(new Date()),
       },
-      order: { startTime: 'ASC' },
+      order: { startTime: "ASC" },
       skip,
       take: limit,
     });
@@ -226,7 +241,10 @@ export class EventsService {
     });
   }
 
-  async getRsvpsForEvent(eventId: string, reminderEnabled = true): Promise<EventRSVP[]> {
+  async getRsvpsForEvent(
+    eventId: string,
+    reminderEnabled = true,
+  ): Promise<EventRSVP[]> {
     return this.rsvpRepo.find({ where: { eventId, reminderEnabled } });
   }
 

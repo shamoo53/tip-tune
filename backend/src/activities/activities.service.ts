@@ -15,8 +15,8 @@ import { UsersService } from "../users/users.service";
 import { BlocksService } from "../blocks/blocks.service";
 import { MuteType } from "../blocks/entities/user-mute.entity";
 
-import { PaginatedResponse } from '../common/dto/paginated-response.dto';
-import { paginate } from '../common/helpers/paginate.helper';
+import { PaginatedResponse } from "../common/dto/paginated-response.dto";
+import { paginate } from "../common/helpers/paginate.helper";
 
 @Injectable()
 export class ActivitiesService {
@@ -47,7 +47,7 @@ export class ActivitiesService {
   async getFeed(
     userId: string,
     query: ActivityFeedQueryDto,
-  ): Promise<PaginatedActivityResponse> {
+  ): Promise<PaginatedResponse<Activity>> {
     const { page = 1, limit = 20, activityType, unseenOnly = false } = query;
     const skip = (page - 1) * limit;
 
@@ -101,18 +101,15 @@ export class ActivitiesService {
 
     const totalPages = Math.ceil(total / limit);
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
-        unseenCount,
-      },
-    };
+    return new PaginatedResponse(data, {
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+      unseenCount,
+    });
   }
 
   /**
@@ -121,7 +118,7 @@ export class ActivitiesService {
   async getUserActivities(
     userId: string,
     query: ActivityFeedQueryDto,
-  ): Promise<PaginatedActivityResponse> {
+  ): Promise<PaginatedResponse<Activity>> {
     const { page = 1, limit = 20, activityType, unseenOnly = false } = query;
     const skip = (page - 1) * limit;
 
@@ -196,7 +193,7 @@ export class ActivitiesService {
   async getPlaylistActivities(
     playlistId: string,
     query: EntityActivityQueryDto,
-  ): Promise<PaginatedActivityResponse> {
+  ): Promise<PaginatedResponse<Activity>> {
     const { page = 1, limit = 20, activityType } = query;
     const skip = (page - 1) * limit;
 

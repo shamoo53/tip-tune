@@ -3,9 +3,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import { TrackLicense, LicenseType } from "./track-license.entity";
 import { LicenseRequest, LicenseRequestStatus } from "./license-request.entity";
 import {
@@ -13,9 +13,10 @@ import {
   CreateLicenseRequestDto,
   RespondToLicenseRequestDto,
 } from "./licensing.dto";
-import { LicensingMailService } from './licensing-mail.service';
+import { LicensingMailService } from "./licensing-mail.service";
 import { NotificationsService } from "@/notifications/notifications.service";
 import { Track } from "@/tracks/entities/track.entity";
+import { NotificationType } from "@/notifications/notification.entity";
 
 @Injectable()
 export class LicensingService {
@@ -102,7 +103,7 @@ export class LicensingService {
       );
     }
 
-     // Validate track exists before persisting
+    // Validate track exists before persisting
     const track = await this.trackRepo.findOne({
       where: { id: dto.trackId },
       select: ["artistId"],
@@ -118,12 +119,11 @@ export class LicensingService {
     });
     const saved = await this.licenseRequestRepo.save(request);
 
-
     if (track.artistId) {
       this.notificationsService
         .create({
           userId: track.artistId,
-          type: "LICENSE_REQUEST",
+          type: NotificationType.LICENSE_REQUEST,
           title: "New License Request",
           message: `A user has requested a license for your track.`,
           data: { requestId: saved.id, trackId: saved.trackId },
@@ -182,7 +182,7 @@ export class LicensingService {
     this.notificationsService
       .create({
         userId: request.requesterId,
-        type: "LICENSE_RESPONSE",
+        type: NotificationType.LICENSE_RESPONSE,
         title: `License Request ${dto.status.toUpperCase()}`,
         message: `Your request for track ${request.trackId} has been ${dto.status}.`,
         data: { requestId: saved.id, status: dto.status },

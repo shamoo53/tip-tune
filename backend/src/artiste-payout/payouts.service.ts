@@ -4,13 +4,13 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, QueryRunner } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import { PayoutRequest, PayoutStatus } from './entities/payout-request.entity';
-import { ArtistBalance } from './entities/artist-balance.entity';
-import { CreatePayoutDto } from './dto/create-payout.dto';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, DataSource, QueryRunner } from "typeorm";
+import { ConfigService } from "@nestjs/config";
+import { ArtistBalance } from "./artist-balance.entity";
+import { PayoutRequest, PayoutStatus } from "./payout-request.entity";
+import { CreatePayoutDto } from "./create-payout.dto";
 
 @Injectable()
 export class PayoutsService {
@@ -26,8 +26,8 @@ export class PayoutsService {
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
   ) {
-    this.minXlmThreshold = this.config.get<number>('PAYOUT_MIN_XLM', 10);
-    this.minUsdcThreshold = this.config.get<number>('PAYOUT_MIN_USDC', 5);
+    this.minXlmThreshold = this.config.get<number>("PAYOUT_MIN_XLM", 10);
+    this.minUsdcThreshold = this.config.get<number>("PAYOUT_MIN_USDC", 5);
   }
 
   // ---------------------------------------------------------------------------
@@ -57,20 +57,22 @@ export class PayoutsService {
   async creditBalance(
     artistId: string,
     amount: number,
-    assetCode: 'XLM' | 'USDC',
+    assetCode: "XLM" | "USDC",
     qr?: QueryRunner,
   ): Promise<void> {
-    const repo = qr ? qr.manager.getRepository(ArtistBalance) : this.balanceRepo;
+    const repo = qr
+      ? qr.manager.getRepository(ArtistBalance)
+      : this.balanceRepo;
 
     await repo
       .createQueryBuilder()
       .update(ArtistBalance)
       .set(
-        assetCode === 'XLM'
+        assetCode === "XLM"
           ? { xlmBalance: () => `"xlmBalance" + ${amount}` }
           : { usdcBalance: () => `"usdcBalance" + ${amount}` },
       )
-      .where('artistId = :artistId', { artistId })
+      .where("artistId = :artistId", { artistId })
       .execute();
   }
 
@@ -82,7 +84,8 @@ export class PayoutsService {
     const { artistId, amount, assetCode, destinationAddress } = dto;
 
     // 1. Minimum threshold check
-    const threshold = assetCode === 'XLM' ? this.minXlmThreshold : this.minUsdcThreshold;
+    const threshold =
+      assetCode === "XLM" ? this.minXlmThreshold : this.minUsdcThreshold;
     if (amount < threshold) {
       throw new BadRequestException(
         `Minimum payout for ${assetCode} is ${threshold}. Requested: ${amount}`,
@@ -105,22 +108,24 @@ export class PayoutsService {
     // 4. Verify sufficient balance & lock atomically
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
-    await qr.startTransaction('SERIALIZABLE');
+    await qr.startTransaction("SERIALIZABLE");
 
     try {
       const balance = await qr.manager
         .getRepository(ArtistBalance)
-        .createQueryBuilder('b')
-        .setLock('pessimistic_write')
-        .where('b.artistId = :artistId', { artistId })
+        .createQueryBuilder("b")
+        .setLock("pessimistic_write")
+        .where("b.artistId = :artistId", { artistId })
         .getOne();
 
       if (!balance) {
-        throw new NotFoundException(`No balance record found for artist ${artistId}`);
+        throw new NotFoundException(
+          `No balance record found for artist ${artistId}`,
+        );
       }
 
       const available =
-        assetCode === 'XLM'
+        assetCode === "XLM"
           ? Number(balance.xlmBalance) - Number(balance.pendingXlm)
           : Number(balance.usdcBalance);
 
@@ -131,11 +136,12 @@ export class PayoutsService {
       }
 
       // Reserve funds
-      if (assetCode === 'XLM') {
-        await qr.manager.getRepository(ArtistBalance).update(
-          { artistId },
-          { pendingXlm: () => `"pendingXlm" + ${amount}` } as any,
-        );
+      if (assetCode === "XLM") {
+        await qr.manager
+          .getRepository(ArtistBalance)
+          .update({ artistId }, {
+            pendingXlm: () => `"pendingXlm" + ${amount}`,
+          } as any);
       }
 
       const payout = qr.manager.getRepository(PayoutRequest).create({
@@ -164,7 +170,7 @@ export class PayoutsService {
   async getHistory(artistId: string): Promise<PayoutRequest[]> {
     return this.payoutRepo.find({
       where: { artistId },
-      order: { requestedAt: 'DESC' },
+      order: { requestedAt: "DESC" },
     });
   }
 
@@ -241,7 +247,7 @@ export class PayoutsService {
     if (!payout) throw new NotFoundException(`Payout ${payoutId} not found`);
 
     // Deduct from real balance and release pending reserve
-    if (payout.assetCode === 'XLM') {
+    if (payout.assetCode === "XLM") {
       await qr.manager
         .getRepository(ArtistBalance)
         .createQueryBuilder()
@@ -250,7 +256,7 @@ export class PayoutsService {
           xlmBalance: () => `"xlmBalance" - ${payout.amount}`,
           pendingXlm: () => `"pendingXlm" - ${payout.amount}`,
         })
-        .where('artistId = :id', { id: payout.artistId })
+        .where("artistId = :id", { id: payout.artistId })
         .execute();
     } else {
       await qr.manager
@@ -258,7 +264,7 @@ export class PayoutsService {
         .createQueryBuilder()
         .update()
         .set({ usdcBalance: () => `"usdcBalance" - ${payout.amount}` })
-        .where('artistId = :id', { id: payout.artistId })
+        .where("artistId = :id", { id: payout.artistId })
         .execute();
     }
 
@@ -282,13 +288,13 @@ export class PayoutsService {
     if (!payout) return;
 
     // Release pending reserve
-    if (payout.assetCode === 'XLM') {
+    if (payout.assetCode === "XLM") {
       await qr.manager
         .getRepository(ArtistBalance)
         .createQueryBuilder()
         .update()
         .set({ pendingXlm: () => `"pendingXlm" - ${payout.amount}` })
-        .where('artistId = :id', { id: payout.artistId })
+        .where("artistId = :id", { id: payout.artistId })
         .execute();
     }
 
